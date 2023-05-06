@@ -3,7 +3,7 @@
 from __future__ import annotations
 import sys
 import argparse
-from typing import Iterable, Sequence, NamedTuple
+from typing import Iterable, Sequence, Mapping, MutableMapping, NamedTuple, List
 import sqlalchemy
 
 
@@ -26,8 +26,10 @@ class ForeignKey(NamedTuple):
         raise ValueError
 
 
-def reflect(db_url: str) -> sqlalchemy.MetaData:
-    engine = sqlalchemy.create_engine(db_url)
+Path = Iterable[ForeignKey]
+
+
+def reflect(engine: sqlalchemy.engine.Engine) -> sqlalchemy.MetaData:
     meta = sqlalchemy.MetaData()
     meta.reflect(bind=engine)
     return meta
@@ -50,6 +52,43 @@ def list_foreign_keys(meta: sqlalchemy.MetaData) -> Iterable[ForeignKey]:
             )
 
 
+def create_table_foreign_key_map(
+    foreign_keys: Iterable[ForeignKey]
+) -> Mapping[str, Iterable[ForeignKey]]:
+    table_fk_map: MutableMapping[str, List[ForeignKey]] = {}
+    for foreign_key in foreign_keys:
+        table = foreign_key.source.table
+        if table not in table_fk_map:
+            table_fk_map[table] = []
+        table_fk_map[table].append(foreign_key)
+    return table_fk_map
+
+
+def find_paths(
+    table_fk_map: Mapping[str, Iterable[ForeignKey]],
+    current_table: str,
+    end_table: str,
+    walked_tables: List[str],
+    walked_keys: List[ForeignKey],
+    found_paths: List[Path],
+) -> None:
+    if current_table in walked_tables:
+        return
+    if current_table == end_table:
+        found_paths.append(walked_keys)
+        return
+    for foreign_key in table_fk_map[current_table]:
+        next_table = foreign_key.destination.table
+        find_paths(
+            table_fk_map,
+            next_table,
+            end_table,
+            walked_tables + [current_table],
+            walked_keys + [foreign_key],
+            found_paths,
+        )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Use foreign keys to find join paths between two tables in a SQL database."
@@ -58,14 +97,17 @@ def main() -> int:
     parser.add_argument("begin", help="begin with this table")
     parser.add_argument("end", help="end with this table")
     args = parser.parse_args()
-    meta = reflect(args.url)
-    test = list(list_foreign_keys(meta))
+    meta = reflect(sqlalchemy.create_engine(args.url))
+    foreign_keys = list(list_foreign_keys(meta))
+    table_fk_map = create_table_foreign_key_map(foreign_keys)
     # TODO: put the foreign keys in a graph: tables are nodes, foreign keys are edges
     # TODO: traverse the graph to find paths
     # TODO: optimize
-    for foreign_key in test:
-        print(foreign_key)
-    path_exists = len(test) > 0
+    found_paths: List[Path] = []
+    find_paths(table_fk_map, args.begin, args.end, [], [], found_paths)
+    for found_path in found_paths:
+        print(found_path)
+    path_exists = len(found_paths) > 0
     return 0 if path_exists else 1
 
 
