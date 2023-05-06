@@ -64,7 +64,7 @@ def create_table_foreign_key_map(
     return table_fk_map
 
 
-def find_paths(
+def gather_paths(
     table_fk_map: Mapping[str, Iterable[ForeignKey]],
     current_table: str,
     end_table: str,
@@ -79,7 +79,7 @@ def find_paths(
         return
     for foreign_key in table_fk_map[current_table]:
         next_table = foreign_key.destination.table
-        find_paths(
+        gather_paths(
             table_fk_map,
             next_table,
             end_table,
@@ -87,6 +87,18 @@ def find_paths(
             walked_keys + [foreign_key],
             found_paths,
         )
+
+
+def find_paths(engine: sqlalchemy.engine.Engine, begin: str, end: str) -> Iterable[Path]:
+    meta = reflect(engine)
+    foreign_keys = list(list_foreign_keys(meta))
+    table_fk_map = create_table_foreign_key_map(foreign_keys)
+    # TODO: put the foreign keys in a graph: tables are nodes, foreign keys are edges
+    # TODO: traverse the graph to find paths
+    # TODO: optimize
+    found_paths: List[Path] = []
+    gather_paths(table_fk_map, begin, end, [], [], found_paths)
+    return found_paths
 
 
 def main() -> int:
@@ -97,14 +109,7 @@ def main() -> int:
     parser.add_argument("begin", help="begin with this table")
     parser.add_argument("end", help="end with this table")
     args = parser.parse_args()
-    meta = reflect(sqlalchemy.create_engine(args.url))
-    foreign_keys = list(list_foreign_keys(meta))
-    table_fk_map = create_table_foreign_key_map(foreign_keys)
-    # TODO: put the foreign keys in a graph: tables are nodes, foreign keys are edges
-    # TODO: traverse the graph to find paths
-    # TODO: optimize
-    found_paths: List[Path] = []
-    find_paths(table_fk_map, args.begin, args.end, [], [], found_paths)
+    found_paths = list(find_paths(sqlalchemy.create_engine(args.url), args.begin, args.end))
     for found_path in found_paths:
         print(found_path)
     path_exists = len(found_paths) > 0
