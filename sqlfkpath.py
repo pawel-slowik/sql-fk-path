@@ -12,11 +12,7 @@ class Key(NamedTuple):
     columns: Sequence[str]
 
     def size_matches(self, other: Key) -> bool:
-        if len(self.columns) != len(other.columns):
-            return False
-        if len(set(self.columns)) != len(set(other.columns)):
-            return False
-        return True
+        return len(self.columns) == len(other.columns)
 
 
 class ForeignKey(NamedTuple):
