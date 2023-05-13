@@ -61,6 +61,10 @@ def create_table_foreign_key_map(
         if table not in table_fk_map:
             table_fk_map[table] = []
         table_fk_map[table].append(foreign_key)
+        table = foreign_key.destination.table
+        if table not in table_fk_map:
+            table_fk_map[table] = []
+        table_fk_map[table].append(foreign_key)
     return table_fk_map
 
 
@@ -78,10 +82,17 @@ def gather_paths(
         found_paths.append(walked_keys)
         return
     for foreign_key in table_fk_map[current_table]:
-        next_table = foreign_key.destination.table
         gather_paths(
             table_fk_map,
-            next_table,
+            foreign_key.destination.table,
+            end_table,
+            walked_tables + [current_table],
+            walked_keys + [foreign_key],
+            found_paths,
+        )
+        gather_paths(
+            table_fk_map,
+            foreign_key.source.table,
             end_table,
             walked_tables + [current_table],
             walked_keys + [foreign_key],
