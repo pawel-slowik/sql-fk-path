@@ -2,8 +2,8 @@ import sqlalchemy
 from sqlfkpath import Key, ForeignKey, find_paths
 
 
-def test_key_simple() -> None:
-    engine = db_from_sql("""
+def test_simple() -> None:
+    sql = """
         CREATE TABLE parent (
             id INT
         );
@@ -12,19 +12,21 @@ def test_key_simple() -> None:
             parent_id INT,
             FOREIGN KEY(parent_id) REFERENCES parent(id)
         );
-    """)
-    found_paths = find_paths(engine, "child", "parent")
-    expected_path = [
-        ForeignKey(
-            source=Key(table="child", columns=["parent_id"]),
-            destination=Key(table="parent", columns=["id"]),
-        ),
+    """
+    found_paths = find_paths(db_from_sql(sql), "child", "parent")
+    expected_paths = [
+        [
+            ForeignKey(
+                source=Key(table="child", columns=["parent_id"]),
+                destination=Key(table="parent", columns=["id"]),
+            ),
+        ]
     ]
-    assert found_paths == [expected_path]
+    assert found_paths == expected_paths
 
 
-def test_key_reversed() -> None:
-    engine = db_from_sql("""
+def test_reversed() -> None:
+    sql = """
         CREATE TABLE parent (
             id INT
         );
@@ -33,19 +35,21 @@ def test_key_reversed() -> None:
             parent_id INT,
             FOREIGN KEY(parent_id) REFERENCES parent(id)
         );
-    """)
-    found_paths = find_paths(engine, "parent", "child")
-    expected_path = [
-        ForeignKey(
-            source=Key(table="child", columns=["parent_id"]),
-            destination=Key(table="parent", columns=["id"]),
-        ),
+    """
+    found_paths = find_paths(db_from_sql(sql), "parent", "child")
+    expected_paths = [
+        [
+            ForeignKey(
+                source=Key(table="child", columns=["parent_id"]),
+                destination=Key(table="parent", columns=["id"]),
+            ),
+        ]
     ]
-    assert found_paths == [expected_path]
+    assert found_paths == expected_paths
 
 
 def test_two_steps() -> None:
-    engine = db_from_sql("""
+    sql = """
         CREATE TABLE grandparent (
             id INT
         );
@@ -60,8 +64,8 @@ def test_two_steps() -> None:
             parent_id INT,
             FOREIGN KEY(parent_id) REFERENCES parent(id)
         );
-    """)
-    found_paths = find_paths(engine, "child", "grandparent")
+    """
+    found_paths = find_paths(db_from_sql(sql), "child", "grandparent")
     expected_paths = [
         [
             ForeignKey(
@@ -78,7 +82,7 @@ def test_two_steps() -> None:
 
 
 def test_alternative_paths() -> None:
-    engine = db_from_sql("""
+    sql = """
         CREATE TABLE right (
             id INT
         );
@@ -96,8 +100,8 @@ def test_alternative_paths() -> None:
             FOREIGN KEY(left_id) REFERENCES left(id),
             FOREIGN KEY(right_id) REFERENCES right(id)
         );
-    """)
-    found_paths = find_paths(engine, "left", "right")
+    """
+    found_paths = find_paths(db_from_sql(sql), "left", "right")
     expected_paths = [
         [
             ForeignKey(
@@ -120,7 +124,7 @@ def test_alternative_paths() -> None:
 
 
 def test_loop() -> None:
-    engine = db_from_sql("""
+    sql = """
         CREATE TABLE begin (
             id INT,
             middle_id INT,
@@ -150,8 +154,8 @@ def test_loop() -> None:
         CREATE TABLE end (
             id INT
         );
-    """)
-    found_paths = find_paths(engine, "begin", "end")
+    """
+    found_paths = find_paths(db_from_sql(sql), "begin", "end")
     expected_paths = [
         [
             ForeignKey(
@@ -168,7 +172,7 @@ def test_loop() -> None:
 
 
 def test_double() -> None:
-    engine = db_from_sql("""
+    sql = """
         CREATE TABLE foo (
             id INT,
             bar_id1 INT,
@@ -181,8 +185,8 @@ def test_double() -> None:
             id1 INT,
             id2 INT
         );
-    """)
-    found_paths = find_paths(engine, "foo", "bar")
+    """
+    found_paths = find_paths(db_from_sql(sql), "foo", "bar")
     expected_paths = [
         [
             ForeignKey(
@@ -201,7 +205,7 @@ def test_double() -> None:
 
 
 def test_composite() -> None:
-    engine = db_from_sql("""
+    sql = """
         CREATE TABLE qux (
             id1 INT,
             id2 INT
@@ -212,8 +216,8 @@ def test_composite() -> None:
             qux_id2 INT,
             FOREIGN KEY(qux_id1, qux_id2) REFERENCES qux(id1, id2)
         );
-    """)
-    found_paths = find_paths(engine, "qux", "baz")
+    """
+    found_paths = find_paths(db_from_sql(sql), "qux", "baz")
     expected_paths = [
         [
             ForeignKey(
