@@ -14,6 +14,9 @@ class Key(NamedTuple):
     def size_matches(self, other: Key) -> bool:
         return len(self.columns) == len(other.columns)
 
+    def __str__(self) -> str:
+        return self.table + "(" + ", ".join(self.columns) + ")"
+
 
 class ForeignKey(NamedTuple):
     source: Key
@@ -24,6 +27,9 @@ class ForeignKey(NamedTuple):
         if source.size_matches(destination):
             return cls(source, destination)
         raise ValueError
+
+    def __str__(self) -> str:
+        return f"{self.source} -> {self.destination}"
 
 
 Path = Iterable[ForeignKey]
@@ -121,8 +127,10 @@ def main() -> int:
     parser.add_argument("end", help="end with this table")
     args = parser.parse_args()
     found_paths = list(find_paths(sqlalchemy.create_engine(args.url), args.begin, args.end))
-    for found_path in found_paths:
-        print(found_path)
+    for index, found_path in enumerate(found_paths):
+        print(f"path {index + 1}, length {len(tuple(found_path))}")
+        for foreign_key in found_path:
+            print("\t" + str(foreign_key))
     path_exists = len(found_paths) > 0
     return 0 if path_exists else 1
 
