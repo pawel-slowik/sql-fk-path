@@ -1,3 +1,7 @@
+![Build Status][build-badge]
+
+[build-badge]: https://github.com/pawel-slowik/sql-fk-path/workflows/tests/badge.svg
+
 This script searches for paths created by foreign keys between two SQL tables.
 
 ## Installation
@@ -30,4 +34,3 @@ code 1 if there are no paths.
 - optionally print the found paths as SQL JOINs
 - handle nonexistent table names in arguments
 - use a separate exit code for errors
-- configure CI
