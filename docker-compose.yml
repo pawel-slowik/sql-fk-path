@@ -1,0 +1,9 @@
+version: "3.4"
+
+services:
+
+  cmd:
+    build: .
+    image: sqlfkpath
+    volumes:
+      - .:/usr/src/app

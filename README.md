@@ -19,9 +19,17 @@ suitable for your database:
 [sqlalchemy]:https://www.sqlalchemy.org/
 [sqlalchemy-dialect]:https://docs.sqlalchemy.org/en/latest/dialects/index.html
 
+With Docker:
+
+	docker-compose build
+
 ## Example usage
 
 	~/path/sqlfkpath.py mysql://user:password@host/database begin_table end_table
+
+With Docker:
+
+	docker-compose run --rm cmd ./sqlfkpath.py mysql://user:password@host/database begin_table end_table
 
 The script will exit with code 0 if there's at least one path found and with
 code 1 if there are no paths.
