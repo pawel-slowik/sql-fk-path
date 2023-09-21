@@ -1,5 +1,5 @@
 import sqlalchemy
-from sqlfkpath import Key, ForeignKey, find_paths
+from sqlfkpath import Key, ForeignKey, Path, find_paths
 
 
 def test_simple() -> None:
@@ -15,12 +15,14 @@ def test_simple() -> None:
     """
     found_paths = find_paths(db_from_sql(sql), "child", "parent")
     expected_paths = [
-        [
-            ForeignKey(
-                source=Key(table="child", columns=["parent_id"]),
-                destination=Key(table="parent", columns=["id"]),
-            ),
-        ]
+        Path(
+            [
+                ForeignKey(
+                    source=Key(table="child", columns=["parent_id"]),
+                    destination=Key(table="parent", columns=["id"]),
+                ),
+            ]
+        ),
     ]
     assert found_paths == expected_paths
 
@@ -38,12 +40,14 @@ def test_reversed() -> None:
     """
     found_paths = find_paths(db_from_sql(sql), "parent", "child")
     expected_paths = [
-        [
-            ForeignKey(
-                source=Key(table="child", columns=["parent_id"]),
-                destination=Key(table="parent", columns=["id"]),
-            ),
-        ]
+        Path(
+            [
+                ForeignKey(
+                    source=Key(table="child", columns=["parent_id"]),
+                    destination=Key(table="parent", columns=["id"]),
+                ),
+            ]
+        ),
     ]
     assert found_paths == expected_paths
 
@@ -67,16 +71,18 @@ def test_two_steps() -> None:
     """
     found_paths = find_paths(db_from_sql(sql), "child", "grandparent")
     expected_paths = [
-        [
-            ForeignKey(
-                source=Key(table="child", columns=["parent_id"]),
-                destination=Key(table="parent", columns=["id"]),
-            ),
-            ForeignKey(
-                source=Key(table="parent", columns=["grandparent_id"]),
-                destination=Key(table="grandparent", columns=["id"]),
-            ),
-        ],
+        Path(
+            [
+                ForeignKey(
+                    source=Key(table="child", columns=["parent_id"]),
+                    destination=Key(table="parent", columns=["id"]),
+                ),
+                ForeignKey(
+                    source=Key(table="parent", columns=["grandparent_id"]),
+                    destination=Key(table="grandparent", columns=["id"]),
+                ),
+            ]
+        ),
     ]
     assert found_paths == expected_paths
 
@@ -103,22 +109,26 @@ def test_alternative_paths() -> None:
     """
     found_paths = find_paths(db_from_sql(sql), "left", "right")
     expected_paths = [
-        [
-            ForeignKey(
-                source=Key(table="top", columns=["left_id"]),
-                destination=Key(table="left", columns=["id"]),
-            ),
-            ForeignKey(
-                source=Key(table="top", columns=["right_id"]),
-                destination=Key(table="right", columns=["id"]),
-            ),
-        ],
-        [
-            ForeignKey(
-                source=Key(table="left", columns=["right_id"]),
-                destination=Key(table="right", columns=["id"]),
-            ),
-        ],
+        Path(
+            [
+                ForeignKey(
+                    source=Key(table="top", columns=["left_id"]),
+                    destination=Key(table="left", columns=["id"]),
+                ),
+                ForeignKey(
+                    source=Key(table="top", columns=["right_id"]),
+                    destination=Key(table="right", columns=["id"]),
+                ),
+            ]
+        ),
+        Path(
+            [
+                ForeignKey(
+                    source=Key(table="left", columns=["right_id"]),
+                    destination=Key(table="right", columns=["id"]),
+                ),
+            ]
+        ),
     ]
     assert sorted(found_paths) == sorted(expected_paths)
 
@@ -157,16 +167,18 @@ def test_loop() -> None:
     """
     found_paths = find_paths(db_from_sql(sql), "begin", "end")
     expected_paths = [
-        [
-            ForeignKey(
-                source=Key(table="begin", columns=["middle_id"]),
-                destination=Key(table="middle", columns=["id"]),
-            ),
-            ForeignKey(
-                source=Key(table="middle", columns=["end_id"]),
-                destination=Key(table="end", columns=["id"]),
-            ),
-        ],
+        Path(
+            [
+                ForeignKey(
+                    source=Key(table="begin", columns=["middle_id"]),
+                    destination=Key(table="middle", columns=["id"]),
+                ),
+                ForeignKey(
+                    source=Key(table="middle", columns=["end_id"]),
+                    destination=Key(table="end", columns=["id"]),
+                ),
+            ]
+        ),
     ]
     assert found_paths == expected_paths
 
@@ -188,18 +200,22 @@ def test_double() -> None:
     """
     found_paths = find_paths(db_from_sql(sql), "foo", "bar")
     expected_paths = [
-        [
-            ForeignKey(
-                source=Key(table="foo", columns=["bar_id1"]),
-                destination=Key(table="bar", columns=["id1"]),
-            ),
-        ],
-        [
-            ForeignKey(
-                source=Key(table="foo", columns=["bar_id2"]),
-                destination=Key(table="bar", columns=["id2"]),
-            ),
-        ],
+        Path(
+            [
+                ForeignKey(
+                    source=Key(table="foo", columns=["bar_id1"]),
+                    destination=Key(table="bar", columns=["id1"]),
+                ),
+            ]
+        ),
+        Path(
+            [
+                ForeignKey(
+                    source=Key(table="foo", columns=["bar_id2"]),
+                    destination=Key(table="bar", columns=["id2"]),
+                ),
+            ]
+        ),
     ]
     assert sorted(found_paths) == sorted(expected_paths)
 
@@ -219,12 +235,14 @@ def test_composite() -> None:
     """
     found_paths = find_paths(db_from_sql(sql), "qux", "baz")
     expected_paths = [
-        [
-            ForeignKey(
-                source=Key(table="baz", columns=["qux_id1", "qux_id2"]),
-                destination=Key(table="qux", columns=["id1", "id2"]),
-            ),
-        ]
+        Path(
+            [
+                ForeignKey(
+                    source=Key(table="baz", columns=["qux_id1", "qux_id2"]),
+                    destination=Key(table="qux", columns=["id1", "id2"]),
+                ),
+            ]
+        ),
     ]
     assert found_paths == expected_paths
 

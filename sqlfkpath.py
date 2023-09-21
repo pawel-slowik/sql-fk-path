@@ -3,6 +3,7 @@
 from __future__ import annotations
 import sys
 import argparse
+import textwrap
 from typing import Iterable, Sequence, Mapping, MutableMapping, NamedTuple, List
 import sqlalchemy
 
@@ -32,7 +33,26 @@ class ForeignKey(NamedTuple):
         return f"{self.source} -> {self.destination}"
 
 
-Path = Iterable[ForeignKey]
+class Path:
+
+    def __init__(self, edges: Iterable[ForeignKey]):
+        self.edges = tuple(edges)
+
+    def __str__(self) -> str:
+        return "\n".join(map(str, self.edges))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Path):
+            return NotImplemented
+        return self.edges == other.edges
+
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, Path):
+            return NotImplemented
+        return self.edges < other.edges
+
+    def length(self) -> int:
+        return len(self.edges)
 
 
 def reflect(engine: sqlalchemy.engine.Engine) -> sqlalchemy.MetaData:
@@ -85,7 +105,7 @@ def gather_paths(
     if current_table in walked_tables:
         return
     if current_table == end_table:
-        found_paths.append(walked_keys)
+        found_paths.append(Path(walked_keys))
         return
     for foreign_key in table_fk_map[current_table]:
         gather_paths(
@@ -128,9 +148,8 @@ def main() -> int:
     args = parser.parse_args()
     found_paths = list(find_paths(sqlalchemy.create_engine(args.url), args.begin, args.end))
     for index, found_path in enumerate(found_paths):
-        print(f"path {index + 1}, length {len(tuple(found_path))}")
-        for foreign_key in found_path:
-            print("\t" + str(foreign_key))
+        print(f"path {index + 1}, length {found_path.length()}")
+        print(textwrap.indent(str(found_path), "\t"))
     path_exists = len(found_paths) > 0
     return 0 if path_exists else 1
 
