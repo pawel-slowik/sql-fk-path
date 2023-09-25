@@ -36,7 +36,6 @@ code 1 if there are no paths.
 
 ## TODO
 
-- optimize for large number of tables
 - refactor the `find_paths` and `gather_paths` functions to use an elegant graph
   traversal algorithm
 - optionally print the found paths as SQL JOINs

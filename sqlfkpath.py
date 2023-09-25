@@ -132,7 +132,6 @@ def find_paths(engine: sqlalchemy.engine.Engine, begin: str, end: str) -> Iterab
     table_fk_map = create_table_foreign_key_map(foreign_keys)
     # TODO: put the foreign keys in a graph: tables are nodes, foreign keys are edges
     # TODO: traverse the graph to find paths
-    # TODO: optimize
     found_paths: List[Path] = []
     gather_paths(table_fk_map, begin, end, [], [], found_paths)
     if found_paths:
