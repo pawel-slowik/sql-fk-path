@@ -135,12 +135,17 @@ def find_paths(engine: sqlalchemy.engine.Engine, begin: str, end: str) -> Iterab
     # TODO: optimize
     found_paths: List[Path] = []
     gather_paths(table_fk_map, begin, end, [], [], found_paths)
+    if found_paths:
+        minimum_length = min(path.length() for path in found_paths)
+        found_paths = list(filter(lambda path: path.length() == minimum_length, found_paths))
     return found_paths
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Use foreign keys to find join paths between two tables in a SQL database."
+        description=(
+            "Use foreign keys to find shortest join paths between two tables in a SQL database."
+        )
     )
     parser.add_argument("url", help="database URL")
     parser.add_argument("begin", help="begin with this table")

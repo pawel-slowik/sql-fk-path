@@ -112,25 +112,13 @@ def test_alternative_paths() -> None:
         Path(
             [
                 ForeignKey(
-                    source=Key(table="top", columns=["left_id"]),
-                    destination=Key(table="left", columns=["id"]),
-                ),
-                ForeignKey(
-                    source=Key(table="top", columns=["right_id"]),
-                    destination=Key(table="right", columns=["id"]),
-                ),
-            ]
-        ),
-        Path(
-            [
-                ForeignKey(
                     source=Key(table="left", columns=["right_id"]),
                     destination=Key(table="right", columns=["id"]),
                 ),
             ]
         ),
     ]
-    assert sorted(found_paths) == sorted(expected_paths)
+    assert found_paths == expected_paths
 
 
 def test_loop() -> None:
