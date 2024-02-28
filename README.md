@@ -39,6 +39,5 @@ code 1 if there are no paths.
 - add support for cross-database foreign keys
 - refactor the `find_paths` and `gather_paths` functions to use an elegant graph
   traversal algorithm
-- optionally print the found paths as SQL JOINs
 - handle nonexistent table names in arguments
 - use a separate exit code for errors

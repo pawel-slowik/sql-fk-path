@@ -29,6 +29,16 @@ class ForeignKey(NamedTuple):
             return cls(source, destination)
         raise ValueError
 
+    def join(self) -> str:
+        conditions = [
+            f"{self.source.table}.{source_column} = {self.destination.table}.{destination_column}"
+            for source_column, destination_column in zip(
+                self.source.columns,
+                self.destination.columns,
+            )
+        ]
+        return f"JOIN {self.destination.table} ON " + " AND ".join(conditions)
+
     def __str__(self) -> str:
         return f"{self.source} -> {self.destination}"
 
@@ -37,6 +47,9 @@ class Path:
 
     def __init__(self, edges: Iterable[ForeignKey]):
         self.edges = tuple(edges)
+
+    def joins(self) -> str:
+        return "\n".join([self.edges[0].source.table] + [edge.join() for edge in self.edges])
 
     def __str__(self) -> str:
         return "\n".join(map(str, self.edges))
@@ -149,11 +162,12 @@ def main() -> int:
     parser.add_argument("url", help="database URL")
     parser.add_argument("begin", help="begin with this table")
     parser.add_argument("end", help="end with this table")
+    parser.add_argument("-j", "--join", action="store_true", help="print paths as SQL joins")
     args = parser.parse_args()
     found_paths = list(find_paths(sqlalchemy.create_engine(args.url), args.begin, args.end))
     for index, found_path in enumerate(found_paths):
         print(f"path {index + 1}, length {found_path.length()}")
-        print(textwrap.indent(str(found_path), "\t"))
+        print(textwrap.indent(found_path.joins() if args.join else str(found_path), "\t"))
     path_exists = len(found_paths) > 0
     return 0 if path_exists else 1
 
