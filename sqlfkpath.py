@@ -4,19 +4,33 @@ from __future__ import annotations
 import sys
 import argparse
 import textwrap
-from typing import Iterable, Sequence, Mapping, MutableMapping, NamedTuple, List
+from typing import Optional, Iterable, Sequence, Mapping, MutableMapping, NamedTuple, List
 import sqlalchemy
 
 
 class Key(NamedTuple):
+    database: Optional[str]
     table: str
     columns: Sequence[str]
 
     def size_matches(self, other: Key) -> bool:
         return len(self.columns) == len(other.columns)
 
+    def database_type_matches(self, other: Key) -> bool:
+        if self.database is None and other.database is None:
+            return True
+        if self.database is not None and other.database is not None:
+            return True
+        return False
+
+    def get_fully_qualified_table(self) -> str:
+        return self.table if self.database is None else f"{self.database}.{self.table}"
+
+    def list_fully_qualified_columns(self) -> Iterable[str]:
+        return [f"{self.get_fully_qualified_table()}.{column}" for column in self.columns]
+
     def __str__(self) -> str:
-        return self.table + "(" + ", ".join(self.columns) + ")"
+        return self.get_fully_qualified_table() + "(" + ", ".join(self.columns) + ")"
 
 
 class ForeignKey(NamedTuple):
@@ -25,19 +39,21 @@ class ForeignKey(NamedTuple):
 
     @classmethod
     def build(cls, source: Key, destination: Key) -> ForeignKey:
-        if source.size_matches(destination):
-            return cls(source, destination)
-        raise ValueError
+        if not source.size_matches(destination):
+            raise ValueError
+        if not source.database_type_matches(destination):
+            raise ValueError
+        return cls(source, destination)
 
     def join(self) -> str:
         conditions = [
-            f"{self.source.table}.{source_column} = {self.destination.table}.{destination_column}"
+            f"{source_column} = {destination_column}"
             for source_column, destination_column in zip(
-                self.source.columns,
-                self.destination.columns,
+                self.source.list_fully_qualified_columns(),
+                self.destination.list_fully_qualified_columns(),
             )
         ]
-        return f"JOIN {self.destination.table} ON " + " AND ".join(conditions)
+        return f"JOIN {self.destination.get_fully_qualified_table()} ON " + " AND ".join(conditions)
 
     def __str__(self) -> str:
         return f"{self.source} -> {self.destination}"
@@ -46,10 +62,17 @@ class ForeignKey(NamedTuple):
 class Path:
 
     def __init__(self, edges: Iterable[ForeignKey]):
-        self.edges = tuple(edges)
+        edges = tuple(edges)
+        database_types = {type(edge.source.database) for edge in edges}
+        if len(database_types) != 1:
+            raise ValueError
+        self.edges = edges
 
     def joins(self) -> str:
-        return "\n".join([self.edges[0].source.table] + [edge.join() for edge in self.edges])
+        return "\n".join(
+            [self.edges[0].source.get_fully_qualified_table()]
+            + [edge.join() for edge in self.edges]
+        )
 
     def __str__(self) -> str:
         return "\n".join(map(str, self.edges))
@@ -75,16 +98,24 @@ def reflect(engine: sqlalchemy.engine.Engine) -> sqlalchemy.MetaData:
 
 
 def list_foreign_keys(meta: sqlalchemy.MetaData) -> Iterable[ForeignKey]:
+
+    def get_schema(table_name: str, meta: sqlalchemy.MetaData) -> Optional[str]:
+        table_schema: Optional[str] = meta.tables[table_name].schema
+        default_schema: Optional[str] = meta.schema
+        return table_schema if table_schema is not None else default_schema
+
     for table in meta.tables.values():
         for constraint in table.constraints:
             if not isinstance(constraint, sqlalchemy.ForeignKeyConstraint):
                 continue
             yield ForeignKey.build(
                 source=Key(
+                    get_schema(table.name, meta),
                     table.name,
                     constraint.column_keys,
                 ),
                 destination=Key(
+                    get_schema(constraint.referred_table.name, meta),
                     constraint.referred_table.name,
                     [element.column.name for element in constraint.elements],
                 ),
@@ -96,11 +127,11 @@ def create_table_foreign_key_map(
 ) -> Mapping[str, Iterable[ForeignKey]]:
     table_fk_map: MutableMapping[str, List[ForeignKey]] = {}
     for foreign_key in foreign_keys:
-        table = foreign_key.source.table
+        table = foreign_key.source.get_fully_qualified_table()
         if table not in table_fk_map:
             table_fk_map[table] = []
         table_fk_map[table].append(foreign_key)
-        table = foreign_key.destination.table
+        table = foreign_key.destination.get_fully_qualified_table()
         if table not in table_fk_map:
             table_fk_map[table] = []
         table_fk_map[table].append(foreign_key)
@@ -123,7 +154,7 @@ def gather_paths(
     for foreign_key in table_fk_map[current_table]:
         gather_paths(
             table_fk_map,
-            foreign_key.destination.table,
+            foreign_key.destination.get_fully_qualified_table(),
             end_table,
             walked_tables + [current_table],
             walked_keys + [foreign_key],
@@ -131,7 +162,7 @@ def gather_paths(
         )
         gather_paths(
             table_fk_map,
-            foreign_key.source.table,
+            foreign_key.source.get_fully_qualified_table(),
             end_table,
             walked_tables + [current_table],
             walked_keys + [foreign_key],

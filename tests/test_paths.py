@@ -18,8 +18,8 @@ def test_simple() -> None:
         Path(
             [
                 ForeignKey(
-                    source=Key(table="child", columns=["parent_id"]),
-                    destination=Key(table="parent", columns=["id"]),
+                    source=Key(database=None, table="child", columns=["parent_id"]),
+                    destination=Key(database=None, table="parent", columns=["id"]),
                 ),
             ]
         ),
@@ -43,8 +43,8 @@ def test_reversed() -> None:
         Path(
             [
                 ForeignKey(
-                    source=Key(table="child", columns=["parent_id"]),
-                    destination=Key(table="parent", columns=["id"]),
+                    source=Key(database=None, table="child", columns=["parent_id"]),
+                    destination=Key(database=None, table="parent", columns=["id"]),
                 ),
             ]
         ),
@@ -74,12 +74,12 @@ def test_two_steps() -> None:
         Path(
             [
                 ForeignKey(
-                    source=Key(table="child", columns=["parent_id"]),
-                    destination=Key(table="parent", columns=["id"]),
+                    source=Key(database=None, table="child", columns=["parent_id"]),
+                    destination=Key(database=None, table="parent", columns=["id"]),
                 ),
                 ForeignKey(
-                    source=Key(table="parent", columns=["grandparent_id"]),
-                    destination=Key(table="grandparent", columns=["id"]),
+                    source=Key(database=None, table="parent", columns=["grandparent_id"]),
+                    destination=Key(database=None, table="grandparent", columns=["id"]),
                 ),
             ]
         ),
@@ -112,8 +112,8 @@ def test_alternative_paths() -> None:
         Path(
             [
                 ForeignKey(
-                    source=Key(table="left", columns=["right_id"]),
-                    destination=Key(table="right", columns=["id"]),
+                    source=Key(database=None, table="left", columns=["right_id"]),
+                    destination=Key(database=None, table="right", columns=["id"]),
                 ),
             ]
         ),
@@ -158,12 +158,12 @@ def test_loop() -> None:
         Path(
             [
                 ForeignKey(
-                    source=Key(table="begin", columns=["middle_id"]),
-                    destination=Key(table="middle", columns=["id"]),
+                    source=Key(database=None, table="begin", columns=["middle_id"]),
+                    destination=Key(database=None, table="middle", columns=["id"]),
                 ),
                 ForeignKey(
-                    source=Key(table="middle", columns=["end_id"]),
-                    destination=Key(table="end", columns=["id"]),
+                    source=Key(database=None, table="middle", columns=["end_id"]),
+                    destination=Key(database=None, table="end", columns=["id"]),
                 ),
             ]
         ),
@@ -191,16 +191,16 @@ def test_double() -> None:
         Path(
             [
                 ForeignKey(
-                    source=Key(table="foo", columns=["bar_id1"]),
-                    destination=Key(table="bar", columns=["id1"]),
+                    source=Key(database=None, table="foo", columns=["bar_id1"]),
+                    destination=Key(database=None, table="bar", columns=["id1"]),
                 ),
             ]
         ),
         Path(
             [
                 ForeignKey(
-                    source=Key(table="foo", columns=["bar_id2"]),
-                    destination=Key(table="bar", columns=["id2"]),
+                    source=Key(database=None, table="foo", columns=["bar_id2"]),
+                    destination=Key(database=None, table="bar", columns=["id2"]),
                 ),
             ]
         ),
@@ -226,8 +226,8 @@ def test_composite() -> None:
         Path(
             [
                 ForeignKey(
-                    source=Key(table="baz", columns=["qux_id1", "qux_id2"]),
-                    destination=Key(table="qux", columns=["id1", "id2"]),
+                    source=Key(database=None, table="baz", columns=["qux_id1", "qux_id2"]),
+                    destination=Key(database=None, table="qux", columns=["id1", "id2"]),
                 ),
             ]
         ),
