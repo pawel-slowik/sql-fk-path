@@ -91,31 +91,35 @@ class Path:
         return len(self.edges)
 
 
+class NoSchemaForUnqualifiedTableName(Exception):
+
+    def __init__(self, table_name: str):
+        self.table_name = table_name
+
+
 def reflect(engine: sqlalchemy.engine.Engine) -> sqlalchemy.MetaData:
     meta = sqlalchemy.MetaData()
-    meta.reflect(bind=engine)
+    if engine_supports_schemas(engine):
+        for schema_name in sqlalchemy.inspect(engine).get_schema_names():
+            meta.reflect(bind=engine, schema=schema_name)
+    else:
+        meta.reflect(bind=engine)
     return meta
 
 
 def list_foreign_keys(meta: sqlalchemy.MetaData) -> Iterable[ForeignKey]:
-
-    def get_schema(table_name: str, meta: sqlalchemy.MetaData) -> Optional[str]:
-        table_schema: Optional[str] = meta.tables[table_name].schema
-        default_schema: Optional[str] = meta.schema
-        return table_schema if table_schema is not None else default_schema
-
     for table in meta.tables.values():
         for constraint in table.constraints:
             if not isinstance(constraint, sqlalchemy.ForeignKeyConstraint):
                 continue
             yield ForeignKey.build(
                 source=Key(
-                    get_schema(table.name, meta),
+                    table.schema,
                     table.name,
                     constraint.column_keys,
                 ),
                 destination=Key(
-                    get_schema(constraint.referred_table.name, meta),
+                    constraint.referred_table.schema,
                     constraint.referred_table.name,
                     [element.column.name for element in constraint.elements],
                 ),
@@ -177,11 +181,47 @@ def find_paths(engine: sqlalchemy.engine.Engine, begin: str, end: str) -> Iterab
     # TODO: put the foreign keys in a graph: tables are nodes, foreign keys are edges
     # TODO: traverse the graph to find paths
     found_paths: List[Path] = []
+    if engine_supports_schemas(engine):
+        default_schema = get_default_schema(engine)
+        begin = get_fully_qualified_table_name(default_schema, begin)
+        end = get_fully_qualified_table_name(default_schema, end)
     gather_paths(table_fk_map, begin, end, [], [], found_paths)
     if found_paths:
         minimum_length = min(path.length() for path in found_paths)
         found_paths = list(filter(lambda path: path.length() == minimum_length, found_paths))
     return found_paths
+
+
+def engine_supports_schemas(engine: sqlalchemy.engine.Engine) -> bool:
+    """
+    SQLite does not have a concept of a schema in the same sense as other DB
+    systems.
+
+    The sqlite dialect advertises schema support with the supports_schemas
+    property set to True. The pysqlite driver, however, when passed a schema
+    that is not None, crashes in get_table_names with an error caused by the
+    following SQL query:
+
+    SELECT name FROM "schema_name.sqlite".sqlite_master WHERE type='table' ORDER BY name
+
+    Not sure if this is a bug in the pysqlite driver.
+
+    """
+    return not engine.driver == "pysqlite"
+
+
+def get_default_schema(engine: sqlalchemy.engine.Engine) -> Optional[str]:
+    if engine.dialect.name == "mysql":
+        return engine.url.database
+    return None
+
+
+def get_fully_qualified_table_name(default_schema: Optional[str], table_name: str) -> str:
+    if "." in table_name:
+        return table_name
+    if default_schema is None:
+        raise NoSchemaForUnqualifiedTableName(table_name=table_name)
+    return default_schema + "." + table_name
 
 
 def main() -> int:

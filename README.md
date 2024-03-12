@@ -34,9 +34,21 @@ With Docker:
 The script will exit with code 0 if there's at least one path found and with
 code 1 if there are no paths.
 
+## Limitations
+
+- The script will try to discover foreign key constraints in all available
+  schemas. This is necessary because a constraint linking two tables could be
+  placed in a schema that is separate from the linked tables. Since for
+  [MySQL][mysql-database-is-schema] and [MariaDB][mariadb-database-is-schema] a
+  schema is synonymous with a database, this means that for these systems the
+  script will inspect all databases. There is currently no way to disable that
+  behaviour.
+
+[mysql-database-is-schema]:https://dev.mysql.com/doc/refman/8.0/en/create-database.html
+[mariadb-database-is-schema]:https://mariadb.com/kb/en/create-database/
+
 ## TODO
 
-- add support for cross-database foreign keys
 - refactor the `find_paths` and `gather_paths` functions to use an elegant graph
   traversal algorithm
 - handle nonexistent table names in arguments
