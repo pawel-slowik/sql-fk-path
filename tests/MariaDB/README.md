@@ -21,16 +21,16 @@ Start the test MariaDB server with:
 
 Run some tests:
 
-    ./sqlfkpath.py mysql://root:secret@127.0.0.1:13306/test_01_c child test_01_a.grandparent
+    ./sqlfkpath.py mysql://test:secret@127.0.0.1:13306/test_01_c child test_01_a.grandparent
 
-    ./sqlfkpath.py mysql://root:secret@127.0.0.1:13306/test_01_c test_01_a.grandparent child
+    ./sqlfkpath.py mysql://test:secret@127.0.0.1:13306/test_01_c test_01_a.grandparent child
 
-    ./sqlfkpath.py mysql://root:secret@127.0.0.1:13306/test_01_a test_01_c.child grandparent
+    ./sqlfkpath.py mysql://test:secret@127.0.0.1:13306/test_01_a test_01_c.child grandparent
 
-    ./sqlfkpath.py mysql://root:secret@127.0.0.1:13306/test_01_a grandparent test_01_c.child
+    ./sqlfkpath.py mysql://test:secret@127.0.0.1:13306/test_01_a grandparent test_01_c.child
 
-    ./sqlfkpath.py mysql://root:secret@127.0.0.1:13306/test_02 child grandparent
+    ./sqlfkpath.py mysql://test:secret@127.0.0.1:13306/test_02 child grandparent
 
-    ./sqlfkpath.py mysql://root:secret@127.0.0.1:13306/test_02 grandparent child
+    ./sqlfkpath.py mysql://test:secret@127.0.0.1:13306/test_02 grandparent child
 
-    ./sqlfkpath.py mysql://root:secret@127.0.0.1:13306/test_03_in foo bar
+    ./sqlfkpath.py mysql://test:secret@127.0.0.1:13306/test_03_in foo bar

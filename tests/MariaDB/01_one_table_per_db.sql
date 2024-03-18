@@ -6,6 +6,10 @@ CREATE DATABASE test_01_a;
 CREATE DATABASE test_01_b;
 CREATE DATABASE test_01_c;
 
+GRANT ALL PRIVILEGES ON test_01_a.* TO test;
+GRANT ALL PRIVILEGES ON test_01_b.* TO test;
+GRANT ALL PRIVILEGES ON test_01_c.* TO test;
+
 USE test_01_a;
 
 CREATE TABLE grandparent (

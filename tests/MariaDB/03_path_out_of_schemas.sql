@@ -4,6 +4,9 @@ DROP DATABASE IF EXISTS test_03_in;
 CREATE DATABASE test_03_in;
 CREATE DATABASE test_03_out;
 
+GRANT ALL PRIVILEGES ON test_03_in.* TO test;
+GRANT ALL PRIVILEGES ON test_03_out.* TO test;
+
 USE test_03_in;
 
 CREATE TABLE foo (

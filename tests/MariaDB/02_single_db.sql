@@ -2,6 +2,8 @@ DROP DATABASE IF EXISTS test_02;
 
 CREATE DATABASE test_02;
 
+GRANT ALL PRIVILEGES ON test_02.* TO test;
+
 USE test_02;
 
 CREATE TABLE grandparent (
