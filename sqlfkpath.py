@@ -93,8 +93,12 @@ class Path:
 
 class NoSchemaForUnqualifiedTableName(Exception):
 
-    def __init__(self, table_name: str):
+    def __init__(self, dialect_name: str, table_name: str):
+        self.dialect_name = dialect_name
         self.table_name = table_name
+
+    def __str__(self) -> str:
+        return f"dialect={self.dialect_name}, table={self.table_name}"
 
 
 def reflect(engine: sqlalchemy.engine.Engine) -> sqlalchemy.MetaData:
@@ -182,9 +186,8 @@ def find_paths(engine: sqlalchemy.engine.Engine, begin: str, end: str) -> Iterab
     # TODO: traverse the graph to find paths
     found_paths: List[Path] = []
     if engine_supports_schemas(engine):
-        default_schema = get_default_schema(engine)
-        begin = get_fully_qualified_table_name(default_schema, begin)
-        end = get_fully_qualified_table_name(default_schema, end)
+        begin = get_fully_qualified_table_name(engine, begin)
+        end = get_fully_qualified_table_name(engine, end)
     gather_paths(table_fk_map, begin, end, [], [], found_paths)
     if found_paths:
         minimum_length = min(path.length() for path in found_paths)
@@ -210,17 +213,21 @@ def engine_supports_schemas(engine: sqlalchemy.engine.Engine) -> bool:
     return not engine.driver == "pysqlite"
 
 
-def get_default_schema(engine: sqlalchemy.engine.Engine) -> Optional[str]:
-    if engine.dialect.name == "mysql":
-        return engine.url.database
-    return None
+def get_fully_qualified_table_name(engine: sqlalchemy.engine.Engine, table_name: str) -> str:
 
+    def get_default_schema(engine: sqlalchemy.engine.Engine) -> Optional[str]:
+        if engine.dialect.name == "mysql":
+            return engine.url.database
+        return None
 
-def get_fully_qualified_table_name(default_schema: Optional[str], table_name: str) -> str:
+    default_schema = get_default_schema(engine)
     if "." in table_name:
         return table_name
     if default_schema is None:
-        raise NoSchemaForUnqualifiedTableName(table_name=table_name)
+        raise NoSchemaForUnqualifiedTableName(
+            dialect_name=engine.dialect.name,
+            table_name=table_name,
+        )
     return default_schema + "." + table_name
 
 
