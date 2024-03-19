@@ -111,11 +111,15 @@ def reflect(engine: sqlalchemy.engine.Engine) -> sqlalchemy.MetaData:
     return meta
 
 
-def list_foreign_keys(meta: sqlalchemy.MetaData) -> Iterable[ForeignKey]:
+def list_foreign_keys(
+    engine: sqlalchemy.engine.Engine,
+    meta: sqlalchemy.MetaData,
+) -> Iterable[ForeignKey]:
     for table in meta.tables.values():
         for constraint in table.constraints:
             if not isinstance(constraint, sqlalchemy.ForeignKeyConstraint):
                 continue
+            referred_table = fix_reflected_table_schema(engine, constraint.referred_table)
             yield ForeignKey.build(
                 source=Key(
                     table.schema,
@@ -123,11 +127,43 @@ def list_foreign_keys(meta: sqlalchemy.MetaData) -> Iterable[ForeignKey]:
                     constraint.column_keys,
                 ),
                 destination=Key(
-                    constraint.referred_table.schema,
-                    constraint.referred_table.name,
+                    referred_table.schema,
+                    referred_table.name,
                     [element.column.name for element in constraint.elements],
                 ),
             )
+
+
+def fix_reflected_table_schema(
+    engine: sqlalchemy.engine.Engine,
+    table: sqlalchemy.sql.schema.Table,
+) -> sqlalchemy.sql.schema.Table:
+    if table.schema is not None:
+        return table
+    if not engine_supports_schemas(engine):
+        return table
+
+    # https://docs.sqlalchemy.org/en/14/dialects/postgresql.html#postgresql-schema-reflection
+    # When using a PostgreSQL dialect the schema for a reflected table could be set to None.
+    # The postgresql_ignore_search_path option doesn't fix this in case of the default schema,
+    # see dialects/postgresql/base.py:
+    # ```
+    # if postgresql_ignore_search_path:
+    #     # when ignoring search path, we use the actual schema
+    #     # provided it isn't the "default" schema
+    #     if conschema != self.default_schema_name:
+    #         referred_schema = conschema
+    #     else:
+    #         referred_schema = schema
+    # ```
+    # Since we need the schema to be consistently set for all tables, attempt to restore it here.
+    if engine.dialect.name == "postgresql":
+        if hasattr(engine.dialect, "default_schema_name"):
+            table.schema = engine.dialect.default_schema_name
+            return table
+        raise ValueError
+
+    raise ValueError
 
 
 def create_table_foreign_key_map(
@@ -180,7 +216,7 @@ def gather_paths(
 
 def find_paths(engine: sqlalchemy.engine.Engine, begin: str, end: str) -> Iterable[Path]:
     meta = reflect(engine)
-    foreign_keys = list(list_foreign_keys(meta))
+    foreign_keys = list(list_foreign_keys(engine, meta))
     table_fk_map = create_table_foreign_key_map(foreign_keys)
     # TODO: put the foreign keys in a graph: tables are nodes, foreign keys are edges
     # TODO: traverse the graph to find paths
@@ -218,6 +254,8 @@ def get_fully_qualified_table_name(engine: sqlalchemy.engine.Engine, table_name:
     def get_default_schema(engine: sqlalchemy.engine.Engine) -> Optional[str]:
         if engine.dialect.name == "mysql":
             return engine.url.database
+        if engine.dialect.name == "postgresql":
+            return "public"
         return None
 
     default_schema = get_default_schema(engine)
