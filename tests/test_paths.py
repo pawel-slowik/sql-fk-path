@@ -237,6 +237,9 @@ def test_composite() -> None:
 
 def db_from_sql(sql: str) -> sqlalchemy.engine.Engine:
     engine = sqlalchemy.create_engine("sqlite://")
+    connection = engine.connect()
+    transaction = connection.begin()
     for statement in sql.split(";"):
-        engine.execute(statement)
+        connection.execute(sqlalchemy.sql.text(statement))
+    transaction.commit()
     return engine
